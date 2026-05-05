@@ -33,7 +33,7 @@ def setup_pinecone_index(index_name):
     pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
     
     # We use 1536 dimensions because that is the exact output size of OpenAI's text-embedding-3-small model
-    dimension = 768 
+    dimension = 3072 
     
     # Check if the index already exists
     existing_indexes = [index_info["name"] for index_info in pc.list_indexes()]
@@ -66,12 +66,21 @@ def embed_and_store(documents, index_name):
     unique_ids = [str(uuid.uuid4()) for _ in documents]
 
     # This single line handles the embedding generation AND the batched upload to Pinecone
-    PineconeVectorStore.from_documents(
-        documents=documents,
-        embedding=embeddings_model,
+
+        # PineconeVectorStore.from_documents(
+    #     documents=documents,
+    #     embedding=embeddings_model,
+    #     index_name=index_name,
+    #     ids=unique_ids
+    # )
+
+
+    vectorstore = PineconeVectorStore(
         index_name=index_name,
-        ids=unique_ids
+        embedding=embeddings_model
     )
+
+    vectorstore.add_documents(documents, ids=unique_ids)
     print("Upload complete! Your vector database is ready for retrieval.")
 
 # --- Execution ---
