@@ -2,6 +2,7 @@ import os
 import json
 import time
 import uuid
+import logging
 from dotenv import load_dotenv
 from langchain_core.documents import Document
 
@@ -25,7 +26,7 @@ def load_chunks_from_json(file_path):
             metadata=item["metadata"]
         )
         documents.append(doc)
-        
+       
     return documents
 
 def setup_pinecone_index(index_name):
@@ -49,6 +50,7 @@ def setup_pinecone_index(index_name):
                 region="us-east-1" # Change this to your preferred AWS region
             )
         )
+        logging.basicConfig(level=logging.DEBUG)
         # Wait a moment for the index to be fully initialized on Pinecone's servers
         time.sleep(10)
         print("Index created successfully.")
@@ -73,14 +75,17 @@ def embed_and_store(documents, index_name):
     #     index_name=index_name,
     #     ids=unique_ids
     # )
+    logging.basicConfig(level=logging.DEBUG)
+    try:
+        vectorstore = PineconeVectorStore(
+            index_name=index_name,
+            embedding=embeddings_model
+        )
 
-
-    vectorstore = PineconeVectorStore(
-        index_name=index_name,
-        embedding=embeddings_model
-    )
-
-    vectorstore.add_documents(documents, ids=unique_ids)
+        vectorstore.add_documents(documents, ids=unique_ids)
+        logging.basicConfig(level=logging.DEBUG)
+    except Exception as e:
+        print(f"Error: {e}")
     print("Upload complete! Your vector database is ready for retrieval.")
 
 # --- Execution ---
@@ -90,10 +95,21 @@ if __name__ == "__main__":
     
     # 1. Load the data
     docs = load_chunks_from_json(JSON_PATH)
-    
+    # test start
+    if docs:
+        test_docs = docs[:2]
+        test_ids = [str(uuid.uuid4()) for _ in test_docs]
+
+        embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2",google_api_key=os.environ.get("GOOGLE_API_KEY"))
+
+        vectorstore = PineconeVectorStore(index_name=INDEX_NAME, embedding=embeddings_model)
+        vectorstore.add_documents(test_docs, ids=test_ids)
+        logging.basicConfig(level=logging.DEBUG)
+    # test end
+     
     # 2. Prepare the database
-    setup_pinecone_index(INDEX_NAME)
+    # setup_pinecone_index(INDEX_NAME)
     
     # 3. Embed and upload
-    if docs:
-        embed_and_store(docs, INDEX_NAME)
+    # if docs:
+    #     embed_and_store(docs, INDEX_NAME)
