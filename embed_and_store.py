@@ -62,56 +62,54 @@ def embed_and_store(documents, index_name,batch_size=2):
     print("Initializing OpenAI Embeddings model...")
     # text-embedding-3-small is currently OpenAI's most cost-effective and highly capable embedding model
     embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2",google_api_key=os.environ.get("GOOGLE_API_KEY"))
-    vectorstore = PineconeVectorStore(
-            index_name=index_name,
-            embedding=embeddings_model
-        )
+    # vectorstore = PineconeVectorStore(
+    #         index_name=index_name,
+    #         embedding=embeddings_model
+    #     )
+     # Pinecone index
+    pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
+    index = pc.Index(index_name)
 
     total = len(documents)
     print(f"Starting batch upload of {total} chunks (batch size {batch_size})...")
 
+    # Generate all embeddings (will do a single API call or batch internally)
+    texts = [doc.page_content for doc in documents]
+    embeddings = embeddings_model.embed_documents(texts)
+    print(f"Embeddings generated. Dimension: {len(embeddings[0])}")
+
+
+
     for i in range(0, total, batch_size):
-        batch = documents[i : i + batch_size]
-        batch_ids = [str(uuid.uuid4()) for _ in batch]
-        print(batch_ids)
+        batch_texts = texts[i : i + batch_size]
+        batch_embeddings = embeddings[i : i + batch_size]
+        batch_docs = documents[i : i + batch_size]
+
+        batch_vectors = []
+        for doc, emb in zip(batch_docs, batch_embeddings):
+            # Store a short text snippet in metadata for easy inspection
+            metadata = doc.metadata.copy()
+            metadata["text_snippet"] = doc.page_content[:500]
+
+            batch_vectors.append({
+                "id": str(uuid.uuid4()),
+                "values": emb,
+                "metadata": metadata
+            })
+
         try:
-            # Upload this batch
-            vectorstore.add_documents(batch, ids=batch_ids)
-            print(f"  ✅ Batch {i//batch_size + 1}: uploaded {len(batch)} chunks")
+            index.upsert(vectors=batch_vectors)
+            print(f"  ✅ Batch {i//batch_size + 1}: {len(batch_vectors)} vectors upserted")
         except Exception as e:
             print(f"  ❌ Batch {i//batch_size + 1} FAILED: {e}")
-            # Optional: continue or break; here we break to inspect the error
             raise
 
-        # Small delay to avoid rate limits (adjust as needed)
-        time.sleep(1)   
+        time.sleep(0.5)   # gentle delay to avoid rate limits
 
 
 
-    # print(f"Uploading {len(documents)} chunks to Pinecone. This may take a moment depending on the batch size...")
-    # # Generate a unique ID for every single chunk
-    # unique_ids = [str(uuid.uuid4()) for _ in documents]
 
-    # # This single line handles the embedding generation AND the batched upload to Pinecone
-
-    #     # PineconeVectorStore.from_documents(
-    # #     documents=documents,
-    # #     embedding=embeddings_model,
-    # #     index_name=index_name,
-    # #     ids=unique_ids
-    # # )
-    # logging.basicConfig(level=logging.DEBUG)
-    # try:
-    #     vectorstore = PineconeVectorStore(
-    #         index_name=index_name,
-    #         embedding=embeddings_model
-    #     )
-
-    #     vectorstore.add_documents(documents, ids=unique_ids)
-    #     logging.basicConfig(level=logging.DEBUG)
-    # except Exception as e:
-    #     print(f"Error: {e}")
-    # print("Upload complete! Your vector database is ready for retrieval.")
+   
 
 # --- Execution ---
 if __name__ == "__main__":
