@@ -33,7 +33,7 @@ def setup_pinecone_index(index_name):
     """Checks if the index exists, creates it if it doesn't."""
     pc = Pinecone(api_key=os.environ.get("PINECONE_API_KEY"))
     
-    # We use 1536 dimensions because that is the exact output size of OpenAI's text-embedding-3-small model
+    
     dimension = 3072 
     
     # Check if the index already exists
@@ -57,7 +57,7 @@ def setup_pinecone_index(index_name):
     else:
         print(f"Index '{index_name}' already exists. Connecting...")
 
-def embed_and_store(documents, index_name,batch_size=2):
+def embed_and_store(documents, index_name,batch_size=1):
     """Generates embeddings and uploads them to Pinecone."""
     print("Initializing OpenAI Embeddings model...")
     # text-embedding-3-small is currently OpenAI's most cost-effective and highly capable embedding model
@@ -87,32 +87,6 @@ def embed_and_store(documents, index_name,batch_size=2):
         time.sleep(1)   
 
 
-
-    # print(f"Uploading {len(documents)} chunks to Pinecone. This may take a moment depending on the batch size...")
-    # # Generate a unique ID for every single chunk
-    # unique_ids = [str(uuid.uuid4()) for _ in documents]
-
-    # # This single line handles the embedding generation AND the batched upload to Pinecone
-
-    #     # PineconeVectorStore.from_documents(
-    # #     documents=documents,
-    # #     embedding=embeddings_model,
-    # #     index_name=index_name,
-    # #     ids=unique_ids
-    # # )
-    # logging.basicConfig(level=logging.DEBUG)
-    # try:
-    #     vectorstore = PineconeVectorStore(
-    #         index_name=index_name,
-    #         embedding=embeddings_model
-    #     )
-
-    #     vectorstore.add_documents(documents, ids=unique_ids)
-    #     logging.basicConfig(level=logging.DEBUG)
-    # except Exception as e:
-    #     print(f"Error: {e}")
-    # print("Upload complete! Your vector database is ready for retrieval.")
-
 # --- Execution ---
 if __name__ == "__main__":
     JSON_PATH = "./output/processed_chunks.json"
@@ -120,21 +94,10 @@ if __name__ == "__main__":
     
     # 1. Load the data
     docs = load_chunks_from_json(JSON_PATH)
-    # # test start
-    # if docs:
-    #     test_docs = docs[:2]
-    #     test_ids = [str(uuid.uuid4()) for _ in test_docs]
-
-    #     embeddings_model = GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2",google_api_key=os.environ.get("GOOGLE_API_KEY"))
-
-    #     vectorstore = PineconeVectorStore(index_name=INDEX_NAME, embedding=embeddings_model)
-    #     vectorstore.add_documents(test_docs, ids=test_ids)
-    #     logging.basicConfig(level=logging.DEBUG)
-    # # test end
      
     #2. Prepare the database
     setup_pinecone_index(INDEX_NAME)
     
     #3. Embed and upload
     if docs:
-        embed_and_store(docs, INDEX_NAME,batch_size=2)
+        embed_and_store(docs, INDEX_NAME,batch_size=1)
