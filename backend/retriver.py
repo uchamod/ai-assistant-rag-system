@@ -36,3 +36,4 @@ def retrieve_top_chunks(query: str, top_k: int = 3) -> list[dict]:
         })
 
     return chunks
+    
